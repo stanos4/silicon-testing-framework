@@ -1,20 +1,21 @@
 """ASE LAMMPS Calculator Library Version"""
 
-import os
 import ctypes
 import operator
+import os
+import re
+import sys, ase.io
 
-import numpy as np
-from numpy.linalg import norm
-
-from lammps import lammps
 from ase.calculators.calculator import Calculator
 from ase.data import chemical_symbols, atomic_masses
 import ase.units
-import re
-##
-import sys, ase.io
+from numpy.linalg import norm
 
+from lammps import lammps
+import numpy as np
+
+
+# #
 # TODO
 # 1. should we make a new lammps object each time ?
 # 2. upper triangular test does not look good
@@ -22,10 +23,8 @@ import sys, ase.io
 # 4. need a routine to get the model back from lammps
 # 5. if we send a command to lmps directly then the calculator does
 #    not know about it and the energy could be wrong.
-
 # 6. do we need a subroutine generator that converts a lammps string
 #   into a python function that can be called
-
 def is_upper_triangular(mat):
     """test if 3x3 matrix is upper triangular"""
 
@@ -35,6 +34,7 @@ def is_upper_triangular(mat):
 
     return near0(mat[1, 0]) and near0(mat[2, 0]) and near0(mat[2, 1])
 
+
 def convert_cell(ase_cell):
     """
     Convert a parallel piped (forming right hand basis)
@@ -43,7 +43,7 @@ def convert_cell(ase_cell):
     """
     cell = np.matrix.transpose(ase_cell)
 
-    if not is_upper_triangular(cell) or cell[0,0] < 0.0 or cell[1,1] < 0.0 or cell[2,2] < 0.0:
+    if not is_upper_triangular(cell) or cell[0, 0] < 0.0 or cell[1, 1] < 0.0 or cell[2, 2] < 0.0:
         # rotate bases into triangular matrix
         tri_mat = np.zeros((3, 3))
         A = cell[:, 0]
@@ -73,9 +73,9 @@ lammps_real = {
       "mass" : 0.001 * ase.units.kg / ase.units.mol,
       "distance" : ase.units.Angstrom,
       "time" : ase.units.fs,
-      "energy" : ase.units.kcal/ase.units.mol,
+      "energy" : ase.units.kcal / ase.units.mol,
       "velocity": ase.units.Angstrom / ase.units.fs,
-      "force": ase.units.kcal/ase.units.mol/ase.units.Angstrom,
+      "force": ase.units.kcal / ase.units.mol / ase.units.Angstrom,
       "pressure" : 101325 * ase.units.Pascal
       }
 
@@ -84,19 +84,21 @@ lammps_metal = {
       "distance" : ase.units.Angstrom,
       "time" : 1e-12 * ase.units.second,
       "energy" : ase.units.eV,
-      "velocity": ase.units.Angstrom / (1e-12*ase.units.second),
-      "force": ase.units.eV/ase.units.Angstrom,
+      "velocity": ase.units.Angstrom / (1e-12 * ase.units.second),
+      "force": ase.units.eV / ase.units.Angstrom,
       "pressure" : 1e5 * ase.units.Pascal
       }
 
-lammps_units={"real":lammps_real,
+lammps_units = {"real":lammps_real,
               "metal":lammps_metal}
 
+
 def unit_convert(quantity, units='metal'):
-   try:
-      return lammps_units[units][quantity]
-   except:
-      raise NotImplementedError("Unit {} in unit system {} is not implemented.".format(quantity,units))
+    try:
+        return lammps_units[units][quantity]
+    except:
+        raise NotImplementedError("Unit {} in unit system {} is not implemented.".format(quantity, units))
+
 
 class LAMMPSlib(Calculator):
 
@@ -252,7 +254,7 @@ End LAMMPSlib Interface Documentation
 
     implemented_properties = ['energy', 'forces', 'stress']
 
-    #NB
+    # NB
     started = False
     initialized = False
 
@@ -278,8 +280,8 @@ End LAMMPSlib Interface Documentation
                 n_bonds = 0
                 for bond_list in atoms.arrays['bonds'][i].split(','):
                     n_bonds += 1
-                    m = re.match('(\d+)\((\d+)\)',bond_list)
-                    atoms.bonds.append((int(m.group(2)),i+1,int(m.group(1))+1))
+                    m = re.match('(\d+)\((\d+)\)', bond_list)
+                    atoms.bonds.append((int(m.group(2)), i + 1, int(m.group(1)) + 1))
                 atoms.max_n_bonds = max(atoms.max_n_bonds, n_bonds)
 
     def set_bonds(self, atoms):
@@ -294,15 +296,15 @@ End LAMMPSlib Interface Documentation
                 n_angles = 0
                 for angle_list in atoms.arrays['angles'][i].split(','):
                     n_angles += 1
-                    m = re.match('(\d+)\-(\d+)\((\d+)\)',angle_list)
-                    atoms.angles.append((int(m.group(3)),int(m.group(1))+1,i+1,int(m.group(2))+1))
+                    m = re.match('(\d+)\-(\d+)\((\d+)\)', angle_list)
+                    atoms.angles.append((int(m.group(3)), int(m.group(1)) + 1, i + 1, int(m.group(2)) + 1))
                 atoms.max_n_angles = max(atoms.max_n_angles, n_angles)
 
     def set_angles(self, atoms):
         for (t, i1, i2, i3) in atoms.angles:
             self.lmp.command('create_angle {} {} {} {}'.format(t, i1, i2, i3))
 
-    def parse_dihedrals(self,atoms):
+    def parse_dihedrals(self, atoms):
         atoms.dihedrals = []
         atoms.max_n_dihedrals = 0
         for i in range(len(atoms)):
@@ -310,8 +312,8 @@ End LAMMPSlib Interface Documentation
                 n_dihedrals = 0
                 for dihedral_list in atoms.arrays['dihedrals'][i].split(','):
                     n_dihedrals += 1
-                    m = re.match('(\d+)\-(\d+)\-(\d+)\((\d+)\)',dihedral_list)
-                    atoms.dihedrals.append((int(m.group(4)),i+1,int(m.group(1))+1,int(m.group(2))+1,int(m.group(3))+1))
+                    m = re.match('(\d+)\-(\d+)\-(\d+)\((\d+)\)', dihedral_list)
+                    atoms.dihedrals.append((int(m.group(4)), i + 1, int(m.group(1)) + 1, int(m.group(2)) + 1, int(m.group(3)) + 1))
                 atoms.max_n_dihedrals = max(atoms.max_n_dihedrals, n_dihedrals)
 
     def set_dihedrals(self, atoms):
@@ -319,10 +321,8 @@ End LAMMPSlib Interface Documentation
             self.lmp.command('create_dihedral {} {} {} {} {}'.format(t, i1, i2, i3, i4))
 
     def set_charges(self, atoms):
-        for i,j in enumerate(atoms.arrays['mmcharge']):
-            self.lmp.command('set atom {} charge {} '.format(i+1,j))
-
-
+        for i, j in list(enumerate(atoms.arrays['mmcharge'])):
+            self.lmp.command('set atom {} charge {} '.format(i + 1, j))
 
     def set_cell(self, atoms, change=False):
         lammps_cell, self.coord_transform = convert_cell(atoms.get_cell())
@@ -357,11 +357,10 @@ End LAMMPSlib Interface Documentation
         lmp_positions = list(pos.ravel())
 
         # Convert that lammps-style array into a C object
-        lmp_c_positions =\
+        lmp_c_positions = \
             (ctypes.c_double * len(lmp_positions))(*lmp_positions)
 #        self.lmp.put_coosrds(lmp_c_positions)
         self.lmp.scatter_atoms('x', 1, 3, lmp_c_positions)
-
 
     def calculate(self, atoms, properties, system_changes):
         self.propagate(atoms, properties, system_changes, 0)
@@ -388,10 +387,10 @@ End LAMMPSlib Interface Documentation
             self.start_lammps()
 
         ####################################################################################################
-        #NB
+        # NB
         if not self.initialized:
             self.initialise_lammps(atoms)
-        else: # still need to reset cell
+        else:  # still need to reset cell
             # reset positions so that if they are cray from last propagation, change_box (in set_cell()) won't hang
             # could do this only after testing for crazy positions?
             # could also use scatter_atoms() to set values (requires MPI comm), or extra_atoms() to get pointers to local 
@@ -400,23 +399,23 @@ End LAMMPSlib Interface Documentation
             self.set_cell(atoms, change=True)
 
         if self.parameters.atom_types is None:
-           raise NameError("atom_types are mandatory.")
+            raise NameError("atom_types are mandatory.")
 
         do_rebuild = False
         do_redo_atom_types = False
         try:
-            do_rebuild = ( len(atoms.numbers) != len(self.previous_atoms_numbers) ) or ( "numbers" in system_changes )
+            do_rebuild = (len(atoms.numbers) != len(self.previous_atoms_numbers)) or ("numbers" in system_changes)
             if not do_rebuild:
-                do_redo_atom_types = ( atoms.numbers != self.previous_atoms_numbers ).any()
+                do_redo_atom_types = (atoms.numbers != self.previous_atoms_numbers).any()
         except Exception:
-           pass
+            pass
 
-        self.lmp.command('echo none') # don't echo the atom positions
+        self.lmp.command('echo none')  # don't echo the atom positions
         if do_rebuild:
-           self.rebuild(atoms)
+            self.rebuild(atoms)
         elif do_redo_atom_types:
-           self.redo_atom_types(atoms)
-        self.lmp.command('echo log') # switch back log
+            self.redo_atom_types(atoms)
+        self.lmp.command('echo log')  # switch back log
 
         self.set_lammps_pos(atoms)
 
@@ -428,14 +427,14 @@ End LAMMPSlib Interface Documentation
 
             # If necessary, transform the velocities to new coordinate system
             if self.coord_transform is not None:
-                vel = np.dot(self.coord_transform , np.matrix.transpose(vel) )
+                vel = np.dot(self.coord_transform , np.matrix.transpose(vel))
                 vel = np.matrix.transpose(vel)
 
             # Convert ase velocities matrix to lammps-style velocities array
             lmp_velocities = list(vel.ravel())
 
             # Convert that lammps-style array into a C object
-            lmp_c_velocities =\
+            lmp_c_velocities = \
                 (ctypes.c_double * len(lmp_velocities))(*lmp_velocities)
 #            self.lmp.put_coosrds(lmp_c_velocities)
             self.lmp.scatter_atoms('v', 1, 3, lmp_c_velocities)
@@ -445,24 +444,24 @@ End LAMMPSlib Interface Documentation
             if dt_not_real_time:
                 self.lmp.command('timestep %.30f' % dt)
             else:
-                self.lmp.command('timestep %.30f' % ( dt/unit_convert("time", self.units)) )
+                self.lmp.command('timestep %.30f' % (dt / unit_convert("time", self.units)))
         self.lmp.command('run %d' % n_steps)
 
         if n_steps > 0:
             # TODO this must be slower than native copy, but why is it broken?
-            pos = np.array([x for x in self.lmp.gather_atoms("x",1,3)]).reshape(-1,3)
+            pos = np.array([x for x in self.lmp.gather_atoms("x", 1, 3)]).reshape(-1, 3)
             if self.coord_transform is not None:
                 pos = np.dot(pos, self.coord_transform)
             atoms.set_positions(pos * unit_convert("distance", self.units))
-            vel = np.array([v for v in self.lmp.gather_atoms("v",1,3)]).reshape(-1,3)
+            vel = np.array([v for v in self.lmp.gather_atoms("v", 1, 3)]).reshape(-1, 3)
             if self.coord_transform is not None:
                 vel = np.dot(vel, self.coord_transform)
             if velocity_field is None:
                 atoms.set_velocities(vel * unit_convert("velocity", self.units))
             if velocity_field is not None:
-                nreflects = self.lmp.extract_fix('1',0,1,0)
+                nreflects = self.lmp.extract_fix('1', 0, 1, 0)
                 atoms.info['nreflects'] = nreflects
-                nreversals = self.lmp.extract_fix('1',0,1,1)
+                nreversals = self.lmp.extract_fix('1', 0, 1, 1)
                 atoms.info['nreversals'] = nreversals
 
         # Extract the forces and energy
@@ -475,34 +474,34 @@ End LAMMPSlib Interface Documentation
         # stress_vars = ['pxx', 'pyy', 'pzz', 'pxy', 'pxz', 'pyz']
         stress_vars = ['pxx', 'pyy', 'pzz', 'pyz', 'pxz', 'pxy']
 
-        for i, var in enumerate(stress_vars):
+        for i, var in list(enumerate(stress_vars)):
             stress[i] = self.lmp.extract_variable(var, None, 0)
 
-        stress_mat = np.zeros( (3,3) )
-        stress_mat[0,0] = stress[0]
-        stress_mat[1,1] = stress[1]
-        stress_mat[2,2] = stress[2]
-        stress_mat[1,2] = stress[3]
-        stress_mat[2,1] = stress[3]
-        stress_mat[0,2] = stress[4]
-        stress_mat[2,0] = stress[4]
-        stress_mat[0,1] = stress[5]
-        stress_mat[1,0] = stress[5]
+        stress_mat = np.zeros((3, 3))
+        stress_mat[0, 0] = stress[0]
+        stress_mat[1, 1] = stress[1]
+        stress_mat[2, 2] = stress[2]
+        stress_mat[1, 2] = stress[3]
+        stress_mat[2, 1] = stress[3]
+        stress_mat[0, 2] = stress[4]
+        stress_mat[2, 0] = stress[4]
+        stress_mat[0, 1] = stress[5]
+        stress_mat[1, 0] = stress[5]
         if self.coord_transform is not None:
             stress_mat = np.dot(self.coord_transform.T, np.dot(stress_mat, self.coord_transform))
-        stress[0] = stress_mat[0,0]
-        stress[1] = stress_mat[1,1]
-        stress[2] = stress_mat[2,2]
-        stress[3] = stress_mat[1,2]
-        stress[4] = stress_mat[0,2]
-        stress[5] = stress_mat[0,1]
+        stress[0] = stress_mat[0, 0]
+        stress[1] = stress_mat[1, 1]
+        stress[2] = stress_mat[2, 2]
+        stress[3] = stress_mat[1, 2]
+        stress[4] = stress_mat[0, 2]
+        stress[5] = stress_mat[0, 1]
 
         self.results['stress'] = stress * (-unit_convert("pressure", self.units))
 
 #        if 'forces' in properties:
         f = np.zeros((len(atoms), 3))
         force_vars = ['fx', 'fy', 'fz']
-        for i, var in enumerate(force_vars):
+        for i, var in list(enumerate(force_vars)):
             f[:, i] = np.asarray(self.lmp.extract_variable(
                     var, 'all', 1)[:len(atoms)]) * unit_convert("force", self.units)
 
@@ -520,54 +519,54 @@ End LAMMPSlib Interface Documentation
         else:
             return 's'
 
-    def rebuild(self,atoms):
+    def rebuild(self, atoms):
 
-       try:
-          n_diff = len(atoms.numbers) - len(self.previous_atoms_numbers)
-       except:
-          n_diff = len(atoms.numbers)
+        try:
+            n_diff = len(atoms.numbers) - len(self.previous_atoms_numbers)
+        except:
+            n_diff = len(atoms.numbers)
+        
+        if n_diff > 0:
+            if any([("reax/c" in cmd) for cmd in self.parameters.lmpcmds]):
+                self.lmp.command("pair_style lj/cut 2.5")
+                self.lmp.command("pair_coeff * * 1 1")
+                
+                for cmd in self.parameters.lmpcmds:
+                    if ("pair_style" in cmd) or ("pair_coeff" in cmd):
+                        self.lmp.command(cmd)
+            
+            cmd = "create_atoms 1 random {} 1 NULL".format(n_diff)
+            self.lmp.command(cmd)
+        elif n_diff < 0:
+            cmd = "group delatoms id {}:{}".format(len(atoms.numbers) + 1, len(self.previous_atoms_numbers))
+            self.lmp.command(cmd)
+            cmd = "delete_atoms group delatoms"
+            self.lmp.command(cmd)
+        
+        self.redo_atom_types(atoms)
 
-       if n_diff > 0:
-          if any([("reax/c" in cmd) for cmd in self.parameters.lmpcmds]):
-             self.lmp.command("pair_style lj/cut 2.5")
-             self.lmp.command("pair_coeff * * 1 1")
+    def redo_atom_types(self, atoms):
 
-             for cmd in self.parameters.lmpcmds:
-                if ("pair_style" in cmd) or ("pair_coeff" in cmd):
-                   self.lmp.command(cmd)
-
-          cmd = "create_atoms 1 random {} 1 NULL".format(n_diff)
-          self.lmp.command(cmd)
-       elif n_diff < 0:
-          cmd = "group delatoms id {}:{}".format(len(atoms.numbers)+1,len(self.previous_atoms_numbers))
-          self.lmp.command(cmd)
-          cmd = "delete_atoms group delatoms"
-          self.lmp.command(cmd)
-
-       self.redo_atom_types(atoms)
-
-    def redo_atom_types(self,atoms):
-
-       current_types = { (i+1,self.parameters.atom_types[sym]) for i,sym in enumerate( atoms.get_chemical_symbols() ) }
-
-       try:
-          previous_types = { (i+1,self.parameters.atom_types[ chemical_symbols[Z] ])
-                              for i,Z in enumerate( self.previous_atoms_numbers ) }
-       except:
-          previous_types = set()
-
-       for (i,i_type) in current_types - previous_types:
-          cmd = "set atom {} type {}".format(i,i_type)
-          self.lmp.command(cmd)
-
-       self.previous_atoms_numbers = atoms.numbers.copy()
+        current_types = { (i + 1, self.parameters.atom_types[sym]) for i, sym in list(enumerate(atoms.get_chemical_symbols())) }
+        
+        try:
+            previous_types = { (i + 1, self.parameters.atom_types[ chemical_symbols[Z] ])
+                               for i, Z in list(enumerate(self.previous_atoms_numbers)) }
+        except:
+            previous_types = set()
+        
+        for (i, i_type) in current_types - previous_types:
+            cmd = "set atom {} type {}".format(i, i_type)
+            self.lmp.command(cmd)
+        
+        self.previous_atoms_numbers = atoms.numbers.copy()
 
     def restart_lammps(self, atoms):
         if self.started:
             self.lmp.command("clear")
         # hope there's no other state to be reset
-        self.started=False
-        self.initialized=False
+        self.started = False
+        self.initialized = False
         self.previous_atoms_numbers = []
         self.start_lammps()
         self.initialise_lammps(atoms)
@@ -578,7 +577,7 @@ End LAMMPSlib Interface Documentation
             cmd_args = ['-echo', 'log', '-log', 'none', '-screen', 'none', '-nocite']
         else:
             cmd_args = ['-echo', 'log', '-log', self.parameters.log_file,
-                        '-screen', 'none','-nocite']
+                        '-screen', 'none', '-nocite']
 
         self.cmd_args = cmd_args
 
@@ -590,14 +589,14 @@ End LAMMPSlib Interface Documentation
             self.lmp.command(cmd)
 
         for cmd in self.parameters.lammps_header:
-           if "units" in cmd:
-              self.units = cmd.split()[1]
+            if "units" in cmd:
+                self.units = cmd.split()[1]
 
         if hasattr(self.parameters, "lammps_header_extra") and self.parameters.lammps_header_extra is not None:
             for cmd in self.parameters.lammps_header_extra:
                 self.lmp.command(cmd)
 
-        self.started=True
+        self.started = True
 
     def initialise_lammps(self, atoms):
 
@@ -617,51 +616,51 @@ End LAMMPSlib Interface Documentation
         self.set_cell(atoms, change=not self.parameters.create_box)
 
         if self.parameters.atom_types  is None:
-           raise NameError("atom_types are mandatory.")
+            raise NameError("atom_types are mandatory.")
 
         # Collect chemical symbols
         symbols = np.asarray(atoms.get_chemical_symbols())
 
         # Initialize box
         if self.parameters.create_box:
-           # count number of known types
-           n_types = len(self.parameters.atom_types)
-           create_box_command = 'create_box {} cell'.format(n_types)
-
-           # count numbers of bonds and angles defined by potential
-           n_dihedral_types = 0
-           n_angle_types = 0
-           n_bond_types = 0
-           for cmd in self.parameters.lmpcmds:
-               m = re.match('\s*angle_coeff\s+(\d+)', cmd)
-               if m is not None:
-                   n_angle_types = max(int(m.group(1)), n_angle_types)
-               m = re.match('\s*bond_coeff\s+(\d+)', cmd)
-               if m is not None:
-                   n_bond_types = max(int(m.group(1)), n_bond_types)
-               m = re.match('\s*dihedral_coeff\s+(\d+)', cmd)
-               if m is not None:
-                   n_dihedral_types = max(int(m.group(1)), n_dihedral_types)
-
-           if self.parameters.read_molecular_info:
-               if 'bonds' in atoms.arrays:
-                   self.parse_bonds(atoms)
-                   create_box_command += ' bond/types {} extra/bond/per/atom {}'.format(n_bond_types,atoms.max_n_bonds)
-               if 'angles' in atoms.arrays:
-                   self.parse_angles(atoms)
-                   create_box_command += ' angle/types {} extra/angle/per/atom {}'.format(n_angle_types,atoms.max_n_angles)
-               if 'dihedrals' in atoms.arrays:
-                   self.parse_dihedrals(atoms)
-                   create_box_command += ' dihedral/types {} extra/dihedral/per/atom {}'.format(n_dihedral_types,atoms.max_n_dihedrals)
-
-           self.lmp.command(create_box_command)
+            # count number of known types
+            n_types = len(self.parameters.atom_types)
+            create_box_command = 'create_box {} cell'.format(n_types)
+            
+            # count numbers of bonds and angles defined by potential
+            n_dihedral_types = 0
+            n_angle_types = 0
+            n_bond_types = 0
+            for cmd in self.parameters.lmpcmds:
+                m = re.match('\s*angle_coeff\s+(\d+)', cmd)
+                if m is not None:
+                    n_angle_types = max(int(m.group(1)), n_angle_types)
+                m = re.match('\s*bond_coeff\s+(\d+)', cmd)
+                if m is not None:
+                    n_bond_types = max(int(m.group(1)), n_bond_types)
+                m = re.match('\s*dihedral_coeff\s+(\d+)', cmd)
+                if m is not None:
+                    n_dihedral_types = max(int(m.group(1)), n_dihedral_types)
+            
+            if self.parameters.read_molecular_info:
+                if 'bonds' in atoms.arrays:
+                    self.parse_bonds(atoms)
+                    create_box_command += ' bond/types {} extra/bond/per/atom {}'.format(n_bond_types, atoms.max_n_bonds)
+                if 'angles' in atoms.arrays:
+                    self.parse_angles(atoms)
+                    create_box_command += ' angle/types {} extra/angle/per/atom {}'.format(n_angle_types, atoms.max_n_angles)
+                if 'dihedrals' in atoms.arrays:
+                    self.parse_dihedrals(atoms)
+                    create_box_command += ' dihedral/types {} extra/dihedral/per/atom {}'.format(n_dihedral_types, atoms.max_n_dihedrals)
+            
+            self.lmp.command(create_box_command)
 
         # Initialize the atoms with their types
         # positions do not matter here
         if self.parameters.create_atoms:
-           self.lmp.command('echo none') # don't echo the atom positions
-           self.rebuild(atoms)
-           self.lmp.command('echo log') # turn back on
+            self.lmp.command('echo none')  # don't echo the atom positions
+            self.rebuild(atoms)
+            self.lmp.command('echo log')  # turn back on
 
         # execute the user commands
         for cmd in self.parameters.lmpcmds:
@@ -673,8 +672,8 @@ End LAMMPSlib Interface Documentation
             for i in range(len(atoms)):
                 if symbols[i] == sym:
                     # convert from amu (ASE) to lammps mass unit)
-                    self.lmp.command('mass %d %.30f' % (self.parameters.atom_types[sym], masses[i] /
-                                                     unit_convert("mass", self.units) ))
+                    self.lmp.command('mass %d %.30f' % (self.parameters.atom_types[sym], masses[i] / 
+                                                     unit_convert("mass", self.units)))
                     break
 
         # Define force & energy variables for extraction
@@ -710,14 +709,15 @@ End LAMMPSlib Interface Documentation
             if 'dihedrals' in atoms.arrays:
                 self.set_dihedrals(atoms)
 
-        print atoms.arrays
+        print(atoms.arrays)
         if self.parameters.read_molecular_info and 'mmcharge' in atoms.arrays: 
-            print atoms.arrays['mmcharge']
+            print(atoms.arrays['mmcharge'])
             self.set_charges(atoms)
 
         self.initialized = True
 
-#print('done loading lammpslib')
+# print('done loading lammpslib')
+
 
 def write_lammps_data(filename, atoms, atom_types, comment=None, cutoff=None,
                       molecule_ids=None, charges=None, units='metal',
@@ -738,22 +738,22 @@ def write_lammps_data(filename, atoms, atom_types, comment=None, cutoff=None,
     if bond_types:
         from matscipy.neighbours import neighbour_list
         i_list, j_list = neighbour_list('ij', atoms, cutoff)
-        print 'Bonds:'
+        print('Bonds:')
         bonds = []
-        for bond_type, (Z1, Z2) in enumerate(bond_types):
+        for bond_type, (Z1, Z2) in list(enumerate(bond_types)):
             bond_mask = (atoms.numbers[i_list] == Z1) & (atoms.numbers[j_list] == Z2)
-            print (Z1, Z2), bond_mask.sum()
+            print((Z1, Z2), bond_mask.sum())
             for (I, J) in zip(i_list[bond_mask], j_list[bond_mask]):
-                #NB: LAMMPS uses 1-based indices for bond types and particle indices
-                bond = (bond_type+1, I+1, J+1)
+                # NB: LAMMPS uses 1-based indices for bond types and particle indices
+                bond = (bond_type + 1, I + 1, J + 1)
                 bonds.append(bond)
-        print
+        print()
         if len(bonds) > 0:
             fh.write('{0} bonds\n'.format(len(bonds)))
             fh.write('{0} bond types\n'.format(len(bond_types)))
 
     if angle_types:
-        print 'Angles:'
+        print('Angles:')
         angle_count = { angle : 0 for angle in angle_types }
         angles = []
         for I in range(len(atoms)):
@@ -763,18 +763,18 @@ def write_lammps_data(filename, atoms, atom_types, comment=None, cutoff=None,
                         continue
                     Zi, Zj, Zk = atoms.numbers[[I, J, K]]
                     if (Zj, Zi, Zk) in angle_types:
-                        angle = (angle_types.index((Zj, Zi, Zk))+1, J+1, I+1, K+1)
+                        angle = (angle_types.index((Zj, Zi, Zk)) + 1, J + 1, I + 1, K + 1)
                         angle_count[(Zj, Zi, Zk)] += 1
                         angles.append(angle)
         for angle in angle_types:
-            print angle, angle_count[angle]
-        print
+            print(angle, angle_count[angle])
+        print()
         if len(angles) > 0:
             fh.write('{0} angles\n'.format(len(angles)))
             fh.write('{0} angle types\n'.format(len(angle_types)))
 
     if dihedral_types:
-        print 'Dihedrals:'
+        print('Dihedrals:')
         dihedral_count = { dihedral : 0 for dihedral in dihedral_types }
         dihedrals = []
         for I in range(len(atoms)):
@@ -783,13 +783,13 @@ def write_lammps_data(filename, atoms, atom_types, comment=None, cutoff=None,
                     for L in j_list[i_list == K]:
                         Zi, Zj, Zk, Zl = atoms.numbers[[I, J, K, L]]
                         if (Zi, Zj, Zk, Zl) in dihedral_types:
-                            dihedral = (dihedral_types.index((Zi, Zj, Zk, Zl))+1,
-                                        I+1, J+1, K+1, L+1)
+                            dihedral = (dihedral_types.index((Zi, Zj, Zk, Zl)) + 1,
+                                        I + 1, J + 1, K + 1, L + 1)
                             dihedral_count[(Zi, Zj, Zk, Zl)] += 1
                             dihedrals.append(dihedral)
         for dihedral in dihedral_types:
-            print dihedral, dihedral_count[dihedral]
-        print
+            print(dihedral, dihedral_count[dihedral])
+        print()
         if len(dihedrals) > 0:
             fh.write('{0} dihedrals\n'.format(len(dihedrals)))
             fh.write('{0} dihedral types\n'.format(len(dihedral_types)))
@@ -821,31 +821,30 @@ def write_lammps_data(filename, atoms, atom_types, comment=None, cutoff=None,
         molecule_ids = np.zeros(len(atoms), dtype=int)
     if charges is None:
         charges = atoms.get_initial_charges()
-    for i, (sym, mol, q, pos) in enumerate(zip(symbols, molecule_ids,
-                                               charges, atoms.get_positions())):
+    for i, (sym, mol, q, pos) in list(enumerate(zip(symbols, molecule_ids,
+                                               charges, atoms.get_positions()))):
         typ = atom_types[sym]
         fh.write('{0} {1} {2} {3:16.8e} {4:16.8e} {5:16.8e} {6:16.8e}\n'
-                 .format(i+1, mol, typ, q, pos[0], pos[1], pos[2]))
+                 .format(i + 1, mol, typ, q, pos[0], pos[1], pos[2]))
 
     if bond_types and len(bonds) > 0:
         fh.write('\nBonds\n\n')
-        for idx, bond in enumerate(bonds):
+        for idx, bond in list(enumerate(bonds)):
             fh.write('{0} {1} {2} {3}\n'
-                     .format(*[idx+1] + list(bond)))
+                     .format(*[idx + 1] + list(bond)))
 
     if angle_types and len(angles) > 0:
         fh.write('\nAngles\n\n')
-        for idx, angle in enumerate(angles):
+        for idx, angle in list(enumerate(angles)):
             fh.write('{0} {1} {2} {3} {4}\n'
-                     .format(*[idx+1] + list(angle)))
+                     .format(*[idx + 1] + list(angle)))
 
     if dihedral_types and len(dihedrals) > 0:
         fh.write('\nDihedrals\n\n')
-        for idx, dihedral in enumerate(dihedrals):
+        for idx, dihedral in list(enumerate(dihedrals)):
             fh.write('{0} {1} {2} {3} {4} {5}\n'
-                     .format(*[idx+1] + list(dihedral)))
+                     .format(*[idx + 1] + list(dihedral)))
 
     if isinstance(filename, basestring):
         fh.close()
-
 

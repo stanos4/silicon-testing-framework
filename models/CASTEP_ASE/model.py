@@ -7,18 +7,18 @@ from ase.calculators.castep import Castep
 model_abs_dir = os.path.abspath(os.path.dirname(__file__))
 
 if 'CASTEP_COMMAND' in os.environ:
-      castep = os.environ['CASTEP_COMMAND']
+    castep = os.environ['CASTEP_COMMAND']  # @IndentOk
 else:
-      castep = spawn.find_executable('castep.serial')
+    castep = spawn.find_executable('castep.serial')
 
 if 'MPIRUN' in os.environ:
-      mpirun = os.environ['MPIRUN']
+    mpirun = os.environ['MPIRUN']
 else:
-      mpirun = spawn.find_executable('mpirun')
+    mpirun = spawn.find_executable('mpirun')
 
 mpirun_args = ''
 if 'MPIRUN_ARGS' in os.environ:
-      mpirun_args = os.environ['MPIRUN_ARGS']
+    mpirun_args = os.environ['MPIRUN_ARGS']
 
 os.environ['CASTEP_COMMAND'] = '{0} {1} {2}'.format(mpirun, mpirun_args, castep)
 

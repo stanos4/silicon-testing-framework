@@ -10,19 +10,18 @@
 #     to physical quantities computed by this test
 
 # standard ASE structure generation routines
-from ase.lattice.cubic import Diamond
-import numpy as np
-
+from __future__ import print_function
 import ase.io, sys, os
+from ase.lattice.cubic import Diamond
 
-# set of utility routines specific this this model/testing framework
+import model
+import numpy as np
 from utilities import relax_atoms, relax_atoms_cell
 
+# set of utility routines specific this this model/testing framework
 # the current model
-import model
-
-a0 = 5.44 # initial guess at lattice constant, cell will be relaxed below
-fmax = 0.01 # maximum force following relaxtion [eV/A]
+a0 = 5.44  # initial guess at lattice constant, cell will be relaxed below
+fmax = 0.01  # maximum force following relaxtion [eV/A]
 
 if not hasattr(model, 'bulk_reference'):
     print("Did not find bulk_reference, recalculating bulk")
@@ -37,19 +36,18 @@ if not hasattr(model, 'bulk_reference'):
     bulk = relax_atoms_cell(bulk, tol=fmax, traj_file=None)
 else:
     bulk = model.bulk_reference.copy()
-    print("Found bulk_reference, lattice constant", bulk.get_cell()[0,0] )
+    print("Found bulk_reference, lattice constant", bulk.get_cell()[0, 0])
     bulk.set_calculator(model.bulk_reference.calc)
 
-a0 = bulk.cell[0,0] # get lattice constant from relaxed bulk
-e0 = bulk.get_potential_energy()/8.0
-print "got a0 ", a0
-print "got e0 ", e0
+a0 = bulk.cell[0, 0]  # get lattice constant from relaxed bulk
+e0 = bulk.get_potential_energy() / 8.0
+print("got a0 ", a0)
+print("got e0 ", e0)
 
 
 def defect_energy(a0, e0, filename):
-
     
-    tmp = ase.io.read(os.path.dirname(__file__)+"/"+filename, index=':', format='extxyz')
+    tmp = ase.io.read(os.path.dirname(__file__) + "/" + filename, index=':', format='extxyz')
     defect = tmp[0]
     
     # adjust lattice constant
@@ -58,14 +56,15 @@ def defect_energy(a0, e0, filename):
     
     # relax atom positions and cell
     # defect.positions += (np.random.rand((66*3))*0.01).reshape([66,3])
-    defect = relax_atoms_cell(defect, tol=fmax, traj_file="model-"+model.name+"-diinterstitial-"+filename+"-relaxed.opt.xyz")
+    defect = relax_atoms_cell(defect, tol=fmax, traj_file="model-" + model.name + "-diinterstitial-" + filename + "-relaxed.opt.xyz")
     ase.io.write(sys.stdout, defect, format='extxyz')
 
-    edefect  = defect.get_potential_energy()
-    print 'defect relaxed cell energy', edefect
-    e_form = (edefect-66.0 * e0) 
-    print 'defect relaxed formation energy', e_form
+    edefect = defect.get_potential_energy()
+    print('defect relaxed cell energy', edefect)
+    e_form = (edefect - 66.0 * e0) 
+    print('defect relaxed formation energy', e_form)
     return e_form
+
 
 # dictionary of computed properties - this is output of this test, to
 #   be compared with other models

@@ -10,19 +10,18 @@
 #     to physical quantities computed by this test
 
 # standard ASE structure generation routines
-from ase.lattice.cubic import Diamond
-import numpy as np
-
+from __future__ import print_function
 import ase.io, sys
+from ase.lattice.cubic import Diamond
 
-# set of utility routines specific this this model/testing framework
+import model
+import numpy as np
 from utilities import relax_atoms, relax_atoms_cell
 
+# set of utility routines specific this this model/testing framework
 # the current model
-import model
-
-a0 = 5.44 # initial guess at lattice constant, cell will be relaxed below
-fmax = 0.01 # maximum force following relaxtion [eV/A]
+a0 = 5.44  # initial guess at lattice constant, cell will be relaxed below
+fmax = 0.01  # maximum force following relaxtion [eV/A]
 
 if not hasattr(model, 'bulk_reference'):
     # set up the a
@@ -38,9 +37,9 @@ else:
     bulk = model.bulk_reference.copy()
     bulk.set_calculator(model.calculator)
 
-a0 = bulk.cell[0,0] # get lattice constant from relaxed bulk
-print "got a0 ", a0
-bulk = Diamond(symbol="Si", latticeconstant=a0, directions=[[1,-1,0],[1,0,-1],[1,1,1]])
+a0 = bulk.cell[0, 0]  # get lattice constant from relaxed bulk
+print("got a0 ", a0)
+bulk = Diamond(symbol="Si", latticeconstant=a0, directions=[[1, -1, 0], [1, 0, -1], [1, 1, 1]])
 bulk.set_calculator(model.calculator)
 
 # set up supercell
@@ -51,7 +50,7 @@ def surface_energy(bulk, z_offset):
     Nat = bulk.get_number_of_atoms()
 
     # shift so cut is through shuffle plane
-    bulk.positions[:,2] += z_offset
+    bulk.positions[:, 2] += z_offset
     bulk.wrap()
 
     # relax atom positions, holding cell fixed
@@ -59,23 +58,24 @@ def surface_energy(bulk, z_offset):
 
     # compute surface formation energy as difference of bulk and expanded cell
     ebulk = bulk.get_potential_energy()
-    print 'bulk cell energy', ebulk
+    print('bulk cell energy', ebulk)
 
-    bulk.cell[2,:] += [0.0,0.0,10.0]
+    bulk.cell[2, :] += [0.0, 0.0, 10.0]
 
     np.random.seed(75)
 
-    bulk.positions += (np.random.rand((Nat*3))*0.1).reshape([Nat,3])
-    bulk = relax_atoms(bulk, tol=fmax, traj_file="model-"+model.name+"-surface-energy-111-relaxed.opt.xyz")
+    bulk.positions += (np.random.rand((Nat * 3)) * 0.1).reshape([Nat, 3])
+    bulk = relax_atoms(bulk, tol=fmax, traj_file="model-" + model.name + "-surface-energy-111-relaxed.opt.xyz")
 
-    eexp  = bulk.get_potential_energy()
+    eexp = bulk.get_potential_energy()
 
     ase.io.write(sys.stdout, bulk, format='extxyz')
 
-    print 'expanded cell energy', eexp
-    e_form = 0.5*(eexp - ebulk) / np.linalg.norm(np.cross(bulk.cell[0,:],bulk.cell[1,:]))
-    print 'relaxed 111 surface formation energy', e_form
+    print('expanded cell energy', eexp)
+    e_form = 0.5 * (eexp - ebulk) / np.linalg.norm(np.cross(bulk.cell[0, :], bulk.cell[1, :]))
+    print('relaxed 111 surface formation energy', e_form)
     return e_form
+
 
 # dictionary of computed properties - this is output of this test, to
 #   be compared with other models

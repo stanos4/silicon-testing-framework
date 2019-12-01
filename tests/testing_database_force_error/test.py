@@ -10,6 +10,7 @@
 #     to physical quantities computed by this test
 
 # standard ASE structure generation routines
+from __future__ import print_function
 import ase.io, os, sys
 
 # set of utility routines specific this this model/testing framework
@@ -17,7 +18,7 @@ import ase.io, os, sys
 import model, utilities
 
 force_component_errors = []
-ats = ase.io.read(os.path.join(os.path.dirname(__file__),'testing_database.xyz'), index=':', format='extxyz')
+ats = ase.io.read(os.path.join(os.path.dirname(__file__), 'testing_database.xyz'), index=':', format='extxyz')
 for at in ats:
     if len(at) > 1:
         at.wrap()
@@ -38,12 +39,12 @@ for at in ats:
                     c_t = at.info['config_type']
                 except KeyError:
                     c_t = 'NONE'
-                force_component_errors.append((dft_f[i,0], f[i,0]-dft_f[i,0], c_t))
-                force_component_errors.append((dft_f[i,1], f[i,1]-dft_f[i,1], c_t))
-                force_component_errors.append((dft_f[i,2], f[i,2]-dft_f[i,2], c_t))
+                force_component_errors.append((dft_f[i, 0], f[i, 0] - dft_f[i, 0], c_t))
+                force_component_errors.append((dft_f[i, 1], f[i, 1] - dft_f[i, 1], c_t))
+                force_component_errors.append((dft_f[i, 2], f[i, 2] - dft_f[i, 2], c_t))
         except:
             pass
-        print len(force_component_errors)
+        print(len(force_component_errors))
         sys.stdout.flush()
 
         if 'GAP_TESTING_MODEL_RELOAD' in os.environ:

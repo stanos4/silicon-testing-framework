@@ -10,21 +10,21 @@
 #     to physical quantities computed by this test
 
 # standard ASE structure generation routines
-from ase.lattice.cubic import Diamond
+from __future__ import print_function
+
 from ase import Atom
-import numpy as np
-
 import ase.io, sys
+from ase.lattice.cubic import Diamond
 
-# set of utility routines specific this this model/testing framework
+import model
+import numpy as np
 from utilities import relax_atoms, relax_atoms_cell
 
+# set of utility routines specific this this model/testing framework
 # the current model
-import model
-
-a0 = 5.44 # initial guess at lattice constant, cell will be relaxed below
-tol = 1e-3 # maximum force following relaxtion [eV/A]
-N = 2 # number of unit cells in each direction
+a0 = 5.44  # initial guess at lattice constant, cell will be relaxed below
+tol = 1e-3  # maximum force following relaxtion [eV/A]
+N = 2  # number of unit cells in each direction
 
 if not hasattr(model, 'bulk_reference_216'):
     # set up the a
@@ -35,16 +35,17 @@ if not hasattr(model, 'bulk_reference_216'):
 
     # use one of the routines from utilities module to relax the initial
     # unit cell and atomic positions
-    print "JOE test relaxing bulk"
-    bulk = relax_atoms_cell(bulk, tol=tol, traj_file=None,method='lbfgs')
-    print "JOE test done relaxing bulk"
+    print("JOE test relaxing bulk")
+    bulk = relax_atoms_cell(bulk, tol=tol, traj_file=None, method='lbfgs')
+    print("JOE test done relaxing bulk")
     bulk *= (N, N, N)
-    print "JOE test reading bulk E"
+    print("JOE test reading bulk E")
     bulk_energy = bulk.get_potential_energy()
-    print "JOE test done reading bulk E"
+    print("JOE test done reading bulk E")
 else:
     bulk = model.bulk_reference_216
     bulk_energy = bulk.get_potential_energy()
+
 
 def fourfold_defect_energy(bulk):
     Nat = bulk.get_number_of_atoms()
@@ -58,23 +59,23 @@ def fourfold_defect_energy(bulk):
     # p[1,0] -= 1.2
     # p[1,1] -= 1.2
     # from CASTEP relaxed structure
-    p [0,:] += (0.81, 0.81, -0.43)
-    p [1,:] -= (0.81, 0.81, -0.43)
+    p [0, :] += (0.81, 0.81, -0.43)
+    p [1, :] -= (0.81, 0.81, -0.43)
 
     defect.set_positions(p)
     
     ase.io.write(sys.stdout, defect, format='extxyz')
     # relax atom positions, holding cell fixed
-    print "JOE test relaxing defect"
-    defect = relax_atoms(defect, tol=tol, traj_file="model-"+model.name+"-test-fourfold-defect.opt.xyz", method="lbfgs")
-    print "JOE test done relaxing defect"
+    print("JOE test relaxing defect")
+    defect = relax_atoms(defect, tol=tol, traj_file="model-" + model.name + "-test-fourfold-defect.opt.xyz", method="lbfgs")
+    print("JOE test done relaxing defect")
     ase.io.write(sys.stdout, defect, format='extxyz')
 
     # compute formation energy as difference of bulk and int energies
-    print 'bulk energy', bulk_energy
-    print 'defect energy', defect.get_potential_energy()
+    print('bulk energy', bulk_energy)
+    print('defect energy', defect.get_potential_energy())
     e_form = defect.get_potential_energy() - bulk_energy
-    print 'defect formation energy', e_form
+    print('defect formation energy', e_form)
     return e_form
 
 

@@ -10,17 +10,16 @@
 #     to physical quantities computed by this test
 
 # standard ASE structure generation routines
+from __future__ import print_function
+import ase.io, os
 from ase.lattice.cubic import Diamond
 
-import ase.io, os
-
-# set of utility routines specific this this model/testing framework
+import model
 from utilities import relax_atoms_cell
 
+# set of utility routines specific this this model/testing framework
 # the current model
-import model
-
-fmax = 0.001 # maximum force following relaxtion [eV/A]
+fmax = 0.001  # maximum force following relaxtion [eV/A]
 
 if not hasattr(model, 'bulk_reference'):
     # set up the a
@@ -36,23 +35,25 @@ else:
     bulk = model.bulk_reference.copy()
     bulk.set_calculator(model.calculator)
 
-print "calling bulk.get_potential_energy()"
-e0_per_atom = bulk.get_potential_energy()/len(bulk)
-print "got e0_per_atom ", e0_per_atom
+print("calling bulk.get_potential_energy()")
+e0_per_atom = bulk.get_potential_energy() / len(bulk)
+print("got e0_per_atom ", e0_per_atom)
+
 
 def traj_energy(e0_per_atom, traj):
-    ats = ase.io.read(os.path.dirname(__file__)+"/"+traj, index=':', format='extxyz')
+    ats = ase.io.read(os.path.dirname(__file__) + "/" + traj, index=':', format='extxyz')
     orig_Es = []
     model_Es = []
     for at in ats:
         # save reference energy
-        orig_Es.append(at.get_potential_energy()/len(at))
+        orig_Es.append(at.get_potential_energy() / len(at))
 
         # calc new energy
         at.set_calculator(model.calculator)
-        model_Es.append(at.get_potential_energy()/len(at))
+        model_Es.append(at.get_potential_energy() / len(at))
 
     return (orig_Es, model_Es)
+
 
 # dictionary of computed properties - this is output of this test, to
 #   be compared with other models
